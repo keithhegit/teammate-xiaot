@@ -2,6 +2,7 @@ import './style.css'
 
 import type { LaunchSession } from '../main/launch'
 import type { TrashResult } from '../main/deletion-session'
+import { MONSTER_ANIMATIONS } from './monster-animations'
 import { moveElement } from './motion'
 import { preloadImage, SpritePlayer } from './sprite-player'
 
@@ -10,12 +11,12 @@ const assetUrl = (relativePath: string): string =>
 
 const IMAGES = {
   background: assetUrl('选择界面/选择界面.png'),
-  walk: assetUrl('走路动效_spritesheet_transparent.png'),
-  point: assetUrl('指着文件_spritesheet_transparent.png'),
-  kick: assetUrl('踹文件动效_spritesheet_transparent.png'),
+  walk: assetUrl(MONSTER_ANIMATIONS.walk.source),
+  point: assetUrl(MONSTER_ANIMATIONS.point.source),
+  kick: assetUrl(MONSTER_ANIMATIONS.kick.source),
   explosion: assetUrl('爆炸_spritesheet_transparent.png'),
-  leo: assetUrl('雷欧登场_spritesheet_transparent.png'),
-  fly: assetUrl('出场飞行动效_spritesheet_transparent.png')
+  leo: assetUrl(MONSTER_ANIMATIONS.leo.source),
+  fly: assetUrl(MONSTER_ANIMATIONS.fly.source)
 } as const
 
 const AUDIO = {
@@ -139,7 +140,7 @@ async function playExplosion(target: { x: number; y: number }): Promise<void> {
 async function runMonsterSequence(target: { x: number; y: number }): Promise<void> {
   playAudio(bgm)
 
-  await monster.load(IMAGES.walk)
+  await monster.load(IMAGES.walk, MONSTER_ANIMATIONS.walk.sheet)
   const start = {
     x: -monster.width,
     y: clamp(target.y - monster.height / 2 + 50, 0, window.innerHeight - monster.height)
@@ -157,13 +158,13 @@ async function runMonsterSequence(target: { x: number; y: number }): Promise<voi
   monster.setPosition(approach.x, approach.y)
 
   playAudio(voice)
-  await monster.load(IMAGES.point, { frameIndices: [11, 12, 13, 14] })
+  await monster.load(IMAGES.point, MONSTER_ANIMATIONS.point.sheet)
   await monster.play({ fps: 8 })
 
   placeConfirmation()
   await waitForConfirmation()
 
-  await monster.load(IMAGES.kick)
+  await monster.load(IMAGES.kick, MONSTER_ANIMATIONS.kick.sheet)
   let explosionTriggered = false
   let explosionTask: Promise<void> = Promise.resolve()
   let trashTask: Promise<TrashResult> = Promise.resolve({ ok: true })
@@ -182,10 +183,10 @@ async function runMonsterSequence(target: { x: number; y: number }): Promise<voi
     }
   })
 
-  await monster.load(IMAGES.leo)
+  await monster.load(IMAGES.leo, MONSTER_ANIMATIONS.leo.sheet)
   await monster.play({ fps: 8 })
 
-  await monster.load(IMAGES.fly)
+  await monster.load(IMAGES.fly, MONSTER_ANIMATIONS.fly.sheet)
   const flyStart = monster.position
   const flyEnd = { x: window.innerWidth + 200, y: flyStart.y }
   void monster.play({ fps: 8, loop: true })
