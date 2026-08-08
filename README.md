@@ -4,6 +4,8 @@
 
 项目现已使用 Electron + TypeScript 实现，不再依赖 Python、PyQt 或 PyInstaller。
 
+> UI 集成与动画接手请先阅读：[MonsterDeleter UI 集成交接](docs/teammate-ui-integration-handoff.md)。
+
 ## 功能
 
 - 文件和文件夹右键菜单：`召唤大将怪兽摧毁`
@@ -64,24 +66,16 @@ Windows 便携版输出到 `release/`。
 
 ## 动画素材格式
 
-小怪兽使用透明 PNG 精灵表，不是 MP4 视频。
+怪兽角色使用透明 PNG 精灵表，不是 MP4 视频。默认从左到右、从上到下播放，速度为 8 FPS。
 
-- 网格：5 列 × 3 行
-- 总帧数：15 帧
-- 播放顺序：从左到右、从上到下
-- 默认速度：8 FPS
-- 普通精灵表：1125 × 1200 px
-- 普通单帧：225 × 400 px
-
-对应文件：
-
-- `assets/走路动效_spritesheet_transparent.png`
-- `assets/指着文件_spritesheet_transparent.png`
-- `assets/踹文件动效_spritesheet_transparent.png`
-- `assets/雷欧登场_spritesheet_transparent.png`
-- `assets/出场飞行动效_spritesheet_transparent.png`
-
-爆炸精灵表同样是 5 × 3，但总尺寸为 7200 × 5760 px，单帧为 1440 × 1920 px。
+| 动作 | 文件 | 网格 | 总帧 / 播放帧 | 最新尺寸 |
+| --- | --- | --- | --- | --- |
+| 走路 | `assets/走路动效_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1190 × 1322 px |
+| 指向 | `assets/指着文件_spritesheet_transparent.png` | 5 × 3 | 表内 15 帧；播放索引 `[11, 12, 13, 14]` | 1122 × 1402 px |
+| 踢击 | `assets/踹文件动效_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1122 × 1402 px |
+| 登场 | `assets/雷欧登场_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1122 × 1402 px |
+| 飞离 | `assets/出场飞行动效_spritesheet_transparent.png` | 4 × 4 | 16 帧 | 1254 × 1254 px |
+| 爆炸 | `assets/爆炸_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 7200 × 5760 px |
 
 `assets/音频/爆炸.MP4` 只作为音效媒体，不包含界面使用的视频画面。
 
