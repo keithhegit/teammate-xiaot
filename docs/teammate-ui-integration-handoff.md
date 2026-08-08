@@ -38,9 +38,9 @@ type LaunchSession =
 
 点击屏幕选择的落点只影响角色位置、爆炸位置和视觉演出，**不是删除目标选择器**。renderer 不会、也不能用点击位置生成文件路径；真正目标始终是主进程启动时收到并保存的 `--target` 路径。
 
-## IPC 与 renderer API
+## 本仓库 Electron IPC 与 renderer API
 
-允许使用的 IPC channel 定义在 `src/shared/api.ts`：
+以下是 MonsterDeleter 仓库当前 Electron 实现的接口，不是对其他宿主技术栈的要求。允许使用的 IPC channel 定义在 `src/shared/api.ts`：
 
 | Channel | 方向 | 用途 |
 | --- | --- | --- |
@@ -68,13 +68,27 @@ type TrashResult =
 
 ## 必须保持的安全边界
 
-- renderer 不能向主进程传任意路径，`trashTarget()` 必须保持无路径参数。
+安全边界分为本仓库实现约束和跨宿主等价语义，二者不要混用。
+
+### 修改本 MonsterDeleter 仓库 renderer/UI 时
+
+- 保留现有 Electron IPC/preload 白名单；renderer 不能向主进程传任意路径，`trashTarget()` 必须保持无路径参数。
+- 目标路径继续由主进程从启动参数获取并持有，不能迁移到 DOM、URL 参数、localStorage 或 renderer 状态作为授权来源。
 - 每次应用启动只允许对启动目标 claim/delete 一次。`DeletionSession.claimTarget()` 第一次 claim 后即锁定，后续请求返回 `already-used`。
 - 删除实现只调用 Electron `shell.trashItem()`，目标进入 Windows 回收站。
 - `shell.trashItem()` 失败时只返回错误并提示用户，不能改用永久删除、命令行删除或其他兜底删除方式。
 - spectacle 模式必须拒绝 claim，任何 UI 路径都不能在表演模式触发删除。
-- 目标路径必须继续由主进程从启动参数获取并持有，不能迁移到 DOM、URL 参数、localStorage 或 renderer 状态作为授权来源。
 - preload 继续使用 `contextIsolation: true`、`nodeIntegration: false`、`sandbox: true` 的窄接口桥接方式。
+- packaged portable 的资源管理器注册命令继续优先使用稳定的 `PORTABLE_EXECUTABLE_FILE`，不能写入临时 `process.execPath`。
+
+### 嵌入非 Electron 或技术栈未知的宿主时
+
+- 只要求保留等价安全语义，不要求宿主实现 Electron IPC、preload、`shell.trashItem()` 或 `PORTABLE_EXECUTABLE_FILE`。
+- 可信宿主持有并授权目标路径；UI/renderer adapter 不提供、拼接或覆盖任意删除路径。
+- 每次启动或每个明确授权的演出会话只能消费一次删除授权，失败后也不能由 UI 绕过该限制重试其他路径。
+- 删除操作只能进入宿主操作系统的回收站或等价可恢复区域，不能永久删除。
+- 回收站操作失败时只返回错误，绝不切换为永久删除、命令行强删或其他不可恢复兜底。
+- 表演模式与删除能力彻底隔离，任何 UI 分支都不能在表演模式获得删除授权。
 
 ## 关键文件地图
 
@@ -123,6 +137,8 @@ type TrashResult =
 
 ## portable 与右键菜单注意事项
 
+本节只适用于 MonsterDeleter 仓库当前的 Electron/Windows portable 实现，不是跨宿主接口要求。
+
 electron-builder 的 portable 应用会从临时运行目录启动；这个临时 `process.execPath` 不能作为持久命令写入注册表，否则下次启动时路径可能已失效。
 
 `PORTABLE_EXECUTABLE_FILE` 指向用户实际启动的稳定便携 EXE。`src/main/context-menu.ts` 已在 packaged 且该变量存在时优先使用它生成菜单命令和图标路径；不要把这里改回只使用 `process.execPath`。
@@ -137,25 +153,23 @@ electron-builder 的 portable 应用会从临时运行目录启动；这个临�
 
 UI agent 可以调整：
 
-- renderer DOM、CSS、文案、布局、视觉层级和演出节奏；
+- renderer DOM、CSS、布局、视觉层级和演出节奏；
+- 除验收清单明确规定的产品文案外，可调整其他提示与辅助文案；
 - 准星、气泡、按钮、状态提示、音频触发和响应式适配；
 - renderer 内的动画编排，以及可复用的 `SpritePlayer` / spritesheet 工具；
 - 在不改变安全契约的前提下，把 UI 与动画封装为更清晰的 renderer adapter。
 
 不可破坏：
 
-- preload API 白名单和无路径参数的 `trashTarget()`；
-- 主进程持有并授权启动目标；
-- 每次启动的一次性 claim；
-- 只用 `shell.trashItem()` 移入回收站；
-- spectacle 模式与删除能力隔离；
+- 按适用场景遵守上方两层安全边界：修改本仓库时保留 Electron 实现，嵌入其他宿主时保留等价安全语义；
+- 目标产品第二按钮文案必须为“嘿嘿嘿，就是它”。当前 `src/renderer/index.html` 仍是“嘿嘿嘿，就是这个”，集成时需要统一；
 - Esc 随时关闭；
 - 二选一阶段系统鼠标必须可见，按钮必须保留 `pointer` 光标并可点击/聚焦；
 - 踢击零基索引 5（第 6 格，现有条件为 `frameIndex === 5`）触发爆炸与 target 模式删除请求的时序语义。
 
 ## 建议的嵌入接口边界
 
-把整个 UI/动画层视为一个 renderer adapter。宿主只需提供与下列接口等价的 session/trash/close contract：
+把整个 UI/动画层视为一个 renderer adapter。下面是 TypeScript 形式的逻辑契约示意；非 Electron 宿主只需提供等价的 session/trash/close 语义，不必采用相同名称、运行时或传输机制：
 
 ```ts
 interface MonsterOverlayHost {
@@ -165,28 +179,45 @@ interface MonsterOverlayHost {
 }
 ```
 
-adapter 负责视觉落点、动画状态机、按钮、提示与结束时机；宿主负责可信启动目标、一次性授权、回收站操作与窗口关闭。不要让 adapter 接收“要删除的路径”作为 `trashTarget()` 参数，也不要假定宿主使用 Electron、某个前端框架或特定目录结构。
+adapter 负责视觉落点、动画状态机、按钮、提示与结束时机；宿主负责可信启动目标、一次性授权、可恢复的系统回收站操作与窗口关闭。不要让 adapter 接收“要删除的路径”作为 `trashTarget()` 参数，也不要假定宿主使用 Electron、某个前端框架或特定目录结构。
 
 ## 已知行为与限制
 
 - 双击便携 EXE、无参数开发启动或没有有效 `--target` 时，会进入 spectacle 表演模式。
-- 文件/文件夹路径必须由资源管理器右键菜单，或由宿主显式以 `--target` 等价契约传入；界面内没有文件选择器。
+- 在本仓库中，文件/文件夹路径必须由资源管理器右键菜单或显式 `--target` 传入；嵌入其他宿主时，目标必须来自可信的宿主侧选择/授权流程，不能来自 UI 演出落点。
 - Windows 11 的经典资源管理器菜单可能位于“显示更多选项”中。
 - 点击位置不是删除目标选择器，只是视觉演出的落点。
 - 当前 overlay 取鼠标所在显示器的 bounds，并覆盖该显示器，不跨所有显示器。
 
 ## 验收清单
 
-- [ ] target 模式能读取既定启动目标，spectacle 模式无论如何都不能删除。
-- [ ] 未开始演出时显示自定义视觉准星；二选一阶段恢复系统鼠标。
-- [ ] 交接完成后，“是的”与目标产品文案“嘿嘿嘿，就是它”都能继续同一确认流程，按钮可点击、可聚焦且光标为 pointer。
-- [ ] 走路、指向、踢击、登场按 5 × 3 切分；飞离按 4 × 4、16 帧切分；爆炸按 5 × 3 切分。
-- [ ] 指向只播放 `[11, 12, 13, 14]`；踢击零基索引 5（第 6 格）只触发一次爆炸和一次删除请求。
-- [ ] target 模式确认后目标通过 `shell.trashItem()` 进入回收站，不永久删除。
+### 本仓库 Electron 实现验收
+
+- [ ] renderer 只通过现有 preload 白名单调用无路径参数的 `trashTarget()`；主进程继续持有启动目标并执行一次性 claim。
+- [ ] target 模式确认后目标只通过 Electron `shell.trashItem()` 进入回收站，不永久删除。
 - [ ] 删除失败显示错误信息，且不会尝试任何永久删除兜底。
-- [ ] Esc 在选择阶段、动画阶段和确认阶段都能关闭 overlay。
 - [ ] 文件、文件夹、目录背景右键菜单分别进入正确模式；Windows 11 “显示更多选项”可找到经典菜单。
 - [ ] portable 打包后注册表命令使用稳定的 `PORTABLE_EXECUTABLE_FILE` 路径，而不是临时运行路径。
+- [ ] preload 仍启用 `contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`。
+
+### 跨宿主等价安全验收
+
+仅在嵌入非 Electron 或技术栈未知的宿主时适用：
+
+- [ ] 可信宿主持有目标，UI/adapter 不能传入或替换任意删除路径。
+- [ ] 每个明确授权的演出会话只能消费一次删除授权。
+- [ ] 删除只进入宿主系统回收站或等价可恢复区域；失败时绝不永久删除。
+- [ ] 表演模式与删除授权隔离。
+- [ ] 宿主无需采用 Electron IPC、preload、`shell.trashItem()` 或 `PORTABLE_EXECUTABLE_FILE`，但必须满足以上等价安全语义。
+
+### UI 与动画产品验收
+
+- [ ] target 模式能读取既定启动目标，spectacle 模式无论如何都不能删除。
+- [ ] 未开始演出时显示自定义视觉准星；二选一阶段恢复系统鼠标。
+- [ ] 交接完成后，第二按钮必须使用目标产品文案“嘿嘿嘿，就是它”；它与“是的”都能继续同一确认流程，按钮可点击、可聚焦且光标为 pointer。
+- [ ] 走路、指向、踢击、登场按 5 × 3 切分；飞离按 4 × 4、16 帧切分；爆炸按 5 × 3 切分。
+- [ ] 指向只播放 `[11, 12, 13, 14]`；踢击零基索引 5（第 6 格）只触发一次爆炸和一次删除请求。
+- [ ] Esc 在选择阶段、动画阶段和确认阶段都能关闭 overlay。
 - [ ] `npm test`、`npm run typecheck`、`npm run build` 通过。
 - [ ] 完成 UI 改动后以截图或 GUI 重测确认布局、鼠标、按钮和完整动画时序。
 
