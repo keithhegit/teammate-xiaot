@@ -1,5 +1,6 @@
 export interface ContextMenuBuildInput {
   executablePath: string
+  portableExecutablePath?: string
   appPath: string
   packaged: boolean
 }
@@ -18,7 +19,11 @@ function quoteWindowsArgument(value: string): string {
 }
 
 export function createContextMenuEntries(input: ContextMenuBuildInput): ContextMenuEntry[] {
-  const executable = quoteWindowsArgument(input.executablePath)
+  const executablePath =
+    input.packaged && input.portableExecutablePath
+      ? input.portableExecutablePath
+      : input.executablePath
+  const executable = quoteWindowsArgument(executablePath)
   const application = input.packaged ? '' : ` ${quoteWindowsArgument(input.appPath)}`
   const launchPrefix = `${executable}${application}`
   const targetCommand = `${launchPrefix} --target "%1"`

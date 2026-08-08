@@ -68,6 +68,10 @@ body.sequence-started .vignette {
   transition-duration: 500ms;
 }
 
+body.sequence-started {
+  cursor: default;
+}
+
 .instruction {
   position: absolute;
   inset: 50% auto auto 50%;
@@ -291,4 +295,3 @@ body.sequence-started .reticle {
     transition-duration: 1ms !important;
   }
 }
-

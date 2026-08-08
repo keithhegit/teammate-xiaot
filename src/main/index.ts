@@ -23,6 +23,7 @@ async function registerExplorerContextMenu(): Promise<void> {
 
   const entries = createContextMenuEntries({
     executablePath: process.execPath,
+    portableExecutablePath: process.env.PORTABLE_EXECUTABLE_FILE,
     appPath: app.getAppPath(),
     packaged: app.isPackaged
   })
@@ -89,4 +90,3 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   app.quit()
 })
-

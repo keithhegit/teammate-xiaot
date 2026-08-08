@@ -16,6 +16,22 @@ describe('createContextMenuEntries', () => {
     expect(entries[1].command).toBe(entries[0].command)
   })
 
+  it('uses the stable portable launcher instead of the temporary extracted executable', () => {
+    const entries = createContextMenuEntries({
+      executablePath: 'C:\\Users\\Og\\AppData\\Local\\Temp\\portable\\MonsterDeleter.exe',
+      portableExecutablePath: 'C:\\Users\\Og\\Downloads\\MonsterDeleter 1.0.0.exe',
+      appPath: 'C:\\unused',
+      packaged: true
+    })
+
+    expect(entries[0].command).toBe(
+      '"C:\\Users\\Og\\Downloads\\MonsterDeleter 1.0.0.exe" --target "%1"'
+    )
+    expect(entries[2].command).toBe(
+      '"C:\\Users\\Og\\Downloads\\MonsterDeleter 1.0.0.exe" --spectacle'
+    )
+  })
+
   it('builds a safe spectacle-only background command', () => {
     const entries = createContextMenuEntries({
       executablePath: 'C:\\Apps\\MonsterDeleter.exe',
