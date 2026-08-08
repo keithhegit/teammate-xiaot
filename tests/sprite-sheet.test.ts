@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { getFrameRect, normalizeFrameIndices } from '../src/renderer/sprite-sheet'
+import {
+  getFrameRect,
+  getScaledFrameSize,
+  normalizeFrameIndices
+} from '../src/renderer/sprite-sheet'
 
 describe('getFrameRect', () => {
   it('returns the first frame rectangle in a 5 x 3 sheet', () => {
@@ -40,3 +44,11 @@ describe('normalizeFrameIndices', () => {
   })
 })
 
+describe('getScaledFrameSize', () => {
+  it('preserves aspect ratio at the requested height', () => {
+    expect(getScaledFrameSize({ width: 225, height: 400 }, 250)).toEqual({
+      width: 141,
+      height: 250
+    })
+  })
+})

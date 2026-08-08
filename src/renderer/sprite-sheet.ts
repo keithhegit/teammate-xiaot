@@ -36,3 +36,12 @@ export function normalizeFrameIndices(
   return indices.filter((index) => index >= 0 && index < frameCount)
 }
 
+export function getScaledFrameSize(
+  frame: Pick<FrameRect, 'width' | 'height'>,
+  targetHeight: number
+): { width: number; height: number } {
+  return {
+    width: Math.round((frame.width / frame.height) * targetHeight),
+    height: targetHeight
+  }
+}

@@ -14,7 +14,7 @@ export default defineConfig({
   },
   renderer: {
     root: rendererRoot,
-    publicDir: publicAssets
+    publicDir: publicAssets,
+    base: './'
   }
 })
-
