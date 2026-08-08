@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createContextMenuEntries } from '../src/main/context-menu'
+import { createContextMenuEntries, createRegistryOperations } from '../src/main/context-menu'
 
 describe('createContextMenuEntries', () => {
   it('builds packaged file and folder commands with a target argument', () => {
@@ -47,3 +47,43 @@ describe('createContextMenuEntries', () => {
   })
 })
 
+describe('createRegistryOperations', () => {
+  it('creates label, icon, and command writes for every menu entry', () => {
+    const entries = createContextMenuEntries({
+      executablePath: 'C:\\Apps\\MonsterDeleter.exe',
+      appPath: 'C:\\unused',
+      packaged: true
+    })
+
+    const operations = createRegistryOperations(entries)
+
+    expect(operations).toHaveLength(9)
+    expect(operations.slice(-3)).toEqual([
+      [
+        'ADD',
+        'HKCU\\Software\\Classes\\Directory\\Background\\shell\\SummonMonster',
+        '/ve',
+        '/d',
+        '召唤大将怪兽（表演模式）',
+        '/f'
+      ],
+      [
+        'ADD',
+        'HKCU\\Software\\Classes\\Directory\\Background\\shell\\SummonMonster',
+        '/v',
+        'Icon',
+        '/d',
+        '"C:\\Apps\\MonsterDeleter.exe",0',
+        '/f'
+      ],
+      [
+        'ADD',
+        'HKCU\\Software\\Classes\\Directory\\Background\\shell\\SummonMonster\\command',
+        '/ve',
+        '/d',
+        '"C:\\Apps\\MonsterDeleter.exe" --spectacle',
+        '/f'
+      ]
+    ])
+  })
+})

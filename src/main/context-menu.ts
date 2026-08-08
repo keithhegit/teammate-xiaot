@@ -11,6 +11,8 @@ export interface ContextMenuEntry {
   icon: string
 }
 
+export type RegistryOperation = string[]
+
 function quoteWindowsArgument(value: string): string {
   return `"${value.replaceAll('"', '\\"')}"`
 }
@@ -43,3 +45,10 @@ export function createContextMenuEntries(input: ContextMenuBuildInput): ContextM
   ]
 }
 
+export function createRegistryOperations(entries: readonly ContextMenuEntry[]): RegistryOperation[] {
+  return entries.flatMap((entry) => [
+    ['ADD', entry.key, '/ve', '/d', entry.label, '/f'],
+    ['ADD', entry.key, '/v', 'Icon', '/d', entry.icon, '/f'],
+    ['ADD', `${entry.key}\\command`, '/ve', '/d', entry.command, '/f']
+  ])
+}
