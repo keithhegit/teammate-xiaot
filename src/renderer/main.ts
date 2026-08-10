@@ -2,7 +2,16 @@ import './style.css'
 
 import type { LaunchSession } from '../main/launch'
 import type { TrashResult } from '../main/deletion-session'
-import { MONSTER_ANIMATIONS, MONSTER_KICK_IMPACT_FRAME } from './monster-animations'
+import {
+  getMonsterExitPosition,
+  getMonsterSequencePositions,
+  MONSTER_ANIMATIONS,
+  MONSTER_APPROACH_DURATION_MS,
+  MONSTER_EXIT_DURATION_MS,
+  MONSTER_FPS,
+  MONSTER_KICK_IMPACT_FRAME,
+  MONSTER_POINT_ANCHOR
+} from './monster-animations'
 import { moveElement } from './motion'
 import { preloadImage, SpritePlayer } from './sprite-player'
 
@@ -11,9 +20,9 @@ const assetUrl = (relativePath: string): string =>
 
 const IMAGES = {
   background: assetUrl('选择界面/选择界面.png'),
-  walkingPointing: assetUrl(MONSTER_ANIMATIONS.walk.source),
-  kickingLeaving: assetUrl(MONSTER_ANIMATIONS.kick.source),
-  explosion: assetUrl('爆炸_spritesheet_transparent.png'),
+  walkingPointing: assetUrl(MONSTER_ANIMATIONS.approachAndPoint.source),
+  kickingLeaving: assetUrl(MONSTER_ANIMATIONS.destroyAndLeave.source),
+  explosion: assetUrl('爆炸_spritesheet_transparent.png')
 } as const
 
 const AUDIO = {
@@ -34,10 +43,6 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 }
 
-function clamp(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), maximum)
-}
-
 function createAudio(source: string, volume: number, loop = false): HTMLAudioElement {
   const audio = new Audio(source)
   audio.preload = 'auto'
@@ -51,16 +56,6 @@ function playAudio(audio: HTMLAudioElement): void {
   audio.pause()
   audio.currentTime = 0
   void audio.play().catch((error) => console.warn('Audio playback failed:', error))
-}
-
-async function preloadImagesInOrder(): Promise<void> {
-  for (const source of [
-    IMAGES.walkingPointing,
-    IMAGES.kickingLeaving,
-    IMAGES.explosion
-  ]) {
-    await preloadImage(source)
-  }
 }
 
 const stage = requiredElement<HTMLElement>('stage')
@@ -85,8 +80,18 @@ const explosionSound = createAudio(AUDIO.explosion, 0.3)
 let launchSession: LaunchSession = { mode: 'spectacle' }
 let sequenceStarted = false
 
+async function prepareAnimationAssets(): Promise<void> {
+  await Promise.all([
+    preloadImage(IMAGES.walkingPointing),
+    preloadImage(IMAGES.kickingLeaving),
+    explosion.load(IMAGES.explosion, { targetHeight: 150 })
+  ])
+  explosion.hide()
+}
+
 document.documentElement.style.setProperty('--background-image', `url("${IMAGES.background}")`)
-void preloadImagesInOrder().catch((error) => console.warn('Image preload failed:', error))
+const animationAssetsReady = prepareAnimationAssets()
+void animationAssetsReady.catch((error) => console.warn('Image preload failed:', error))
 
 function updateReticle(event: MouseEvent): void {
   if (sequenceStarted) {
@@ -116,55 +121,52 @@ function waitForConfirmation(): Promise<void> {
 
 function placeConfirmation(): void {
   const position = monster.position
-  bubble.style.left = `${position.x + monster.width / 2 - 115}px`
-  bubble.style.top = `${position.y - 74}px`
-  choices.style.left = `${position.x + monster.width / 2 - 166}px`
-  choices.style.top = `${position.y + monster.height - 8}px`
+  bubble.style.left = `${position.x + MONSTER_POINT_ANCHOR.x - 80}px`
+  bubble.style.top = `${position.y + MONSTER_POINT_ANCHOR.y - 140}px`
+  choices.style.left = `${position.x + MONSTER_POINT_ANCHOR.x - 130}px`
+  choices.style.top = `${position.y + MONSTER_POINT_ANCHOR.y + 45}px`
 }
 
 async function playExplosion(target: { x: number; y: number }): Promise<void> {
   playAudio(explosionSound)
-  await explosion.load(IMAGES.explosion, { targetHeight: 150 })
   explosion.setPosition(target.x - explosion.width / 2, target.y - explosion.height / 2 - 40)
   explosion.show()
-  await explosion.play({ fps: 8 })
+  await explosion.play({ fps: MONSTER_FPS })
   explosion.hide()
 }
 
 async function runMonsterSequence(target: { x: number; y: number }): Promise<void> {
+  await animationAssetsReady
   playAudio(bgm)
 
-  await monster.load(IMAGES.walkingPointing, MONSTER_ANIMATIONS.walk.sheet)
-  const start = {
-    x: -monster.width,
-    y: clamp(target.y - monster.height / 2 + 50, 0, window.innerHeight - monster.height)
-  }
-  const approach = {
-    x: clamp(target.x - monster.width - 30, 0, window.innerWidth - monster.width),
-    y: start.y
-  }
+  await monster.load(IMAGES.walkingPointing, MONSTER_ANIMATIONS.approachAndPoint.sheet)
+  const { start, approach } = getMonsterSequencePositions(target, monster.width)
   monster.setFlip(false)
   monster.setPosition(start.x, start.y)
   monster.show()
-  void monster.play({ fps: 8, loop: true })
-  await moveElement(monsterCanvas, start, approach, 4500, 'cubic-bezier(0.16, 1, 0.3, 1)')
-  monster.stop()
+
+  const phaseOnePlayback = monster.play({ fps: MONSTER_FPS })
+  const movement = moveElement(
+    monsterCanvas,
+    start,
+    approach,
+    MONSTER_APPROACH_DURATION_MS,
+    'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+  )
+  await Promise.all([phaseOnePlayback, movement])
   monster.setPosition(approach.x, approach.y)
 
   playAudio(voice)
-  await monster.load(IMAGES.walkingPointing, MONSTER_ANIMATIONS.point.sheet)
-  await monster.play({ fps: 8 })
-
   placeConfirmation()
   await waitForConfirmation()
 
-  await monster.load(IMAGES.kickingLeaving, MONSTER_ANIMATIONS.kick.sheet)
+  await monster.load(IMAGES.kickingLeaving, MONSTER_ANIMATIONS.destroyAndLeave.sheet)
   let explosionTriggered = false
   let explosionTask: Promise<void> = Promise.resolve()
   let trashTask: Promise<TrashResult> = Promise.resolve({ ok: true })
 
   await monster.play({
-    fps: 8,
+    fps: MONSTER_FPS,
     onFrame: (frameIndex) => {
       if (frameIndex !== MONSTER_KICK_IMPACT_FRAME || explosionTriggered) {
         return
@@ -177,15 +179,15 @@ async function runMonsterSequence(target: { x: number; y: number }): Promise<voi
     }
   })
 
-  await monster.load(IMAGES.kickingLeaving, MONSTER_ANIMATIONS.leo.sheet)
-  await monster.play({ fps: 8 })
-
-  await monster.load(IMAGES.kickingLeaving, MONSTER_ANIMATIONS.fly.sheet)
-  const flyStart = monster.position
-  const flyEnd = { x: window.innerWidth + 200, y: flyStart.y }
-  void monster.play({ fps: 8, loop: true })
-  await moveElement(monsterCanvas, flyStart, flyEnd, 2000, 'cubic-bezier(0.7, 0, 0.84, 0)')
-  monster.stop()
+  const exitStart = monster.position
+  const exitEnd = getMonsterExitPosition(window.innerWidth, monster.width, exitStart.y)
+  await moveElement(
+    monsterCanvas,
+    exitStart,
+    exitEnd,
+    MONSTER_EXIT_DURATION_MS,
+    'cubic-bezier(0.7, 0, 0.84, 0)'
+  )
 
   await explosionTask
   const trashResult = await trashTask
