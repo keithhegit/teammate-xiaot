@@ -1,103 +1,66 @@
-# 大将怪兽摧毁 · MonsterDeleter
+# 🦖 大将怪兽摧毁 - Desktop Monster Deleter
 
-一个 Windows 桌面互动程序：从资源管理器右键菜单召唤大将怪兽，用完整动画把选中的文件或文件夹安全移入回收站。
+这是一个充满趣味的 Windows 桌面交互应用！当你想删除电脑上的文件时，不再是单调的系统提示，而是可以召唤出一只强悍的“大将怪兽”，让他迈着嚣张的步伐走到文件跟前，一脚将文件连同垃圾桶一起踢爆粉碎！
 
-项目现已使用 Electron + TypeScript 实现，不再依赖 Python、PyQt 或 PyInstaller。
+## ✨ 核心亮点
 
-> UI 集成与动画接手请先阅读：[MonsterDeleter UI 集成交接](docs/teammate-ui-integration-handoff.md)。
+- 🎯 **狙击级精准锁定**：高级半透明磨砂 UI 与红色十字狙击光标，给你沉浸式的瞄准体验。
+- 🦖 **生动的怪兽动效**：包括出场、行走、指点、踢爆、飞离等全套精心设计的逐帧动画（支持完美绿幕抠图）。
+- 💥 **硬核视听震撼**：全程伴随专属 BGM、怪兽语音以及爆破音效，删除文件也能成为一种享受。
+- 🖱️ **智能右键菜单集成**：程序只需运行一次，即可自动在 Windows 右键菜单中注册“召唤大将怪兽摧毁”选项。
+- 🚀 **指哪打哪**：在任意文件夹或桌面右击文件并召唤怪兽，它都能精确获取鼠标的绝对物理坐标，实现精准打击。
 
-## 功能
+## 📦 如何使用（无需安装环境）
 
-- 文件和文件夹右键菜单：`召唤大将怪兽摧毁`
-- 桌面及目录背景菜单：`召唤大将怪兽（表演模式）`
-- 透明、无边框、置顶且不进入任务栏的全屏互动层
-- 自动定位到鼠标所在显示器
-- Esc 随时退出
-- Canvas 精灵动画、背景音乐、语音和爆炸音效预加载
-- 使用 Electron `shell.trashItem()` 移入回收站，不做永久删除
-- Renderer 无法指定任意路径；每个启动目标只允许删除一次
+如果你拿到了打包好的 `MonsterDeleter.exe`，只需要两步：
 
-## 环境要求
+1. **注册右键菜单**：双击运行一次 `MonsterDeleter.exe`，此时屏幕会变暗并出现狙击瞄准界面，同时系统后台已自动将右键选项写入注册表。按 `Esc` 或关闭程序即可。
+2. **享受摧毁**：在桌面上或任意文件夹中，右键点击你想删除的倒霉文件，选择 **“召唤大将怪兽摧毁”**。屏幕变暗后，使用红色准星点击该文件，欣赏怪兽的表演！
 
-- Windows 10 或 Windows 11
-- Node.js 22.12 或更高版本
-- npm 11 或兼容版本
+> ⚠️ **注意**：程序实际使用了 `send2trash`（安全移至回收站）而不是彻底粉碎，所以如果你后悔了，还可以从回收站把文件捞回来。
 
-## 本地开发
+## 🛠️ 开发者指南 (Developer Guide)
 
-```powershell
-npm install
-npm run dev
+如果你想通过源码运行或自己修改代码，请确保你的系统上安装了 Python 3。
+
+### 1. 安装依赖
+
+```bash
+pip install -r requirements.txt
 ```
 
-无参数开发启动默认为表演模式，不会删除文件。
+### 2. 本地运行测试
 
-使用生产构建测试指定目标：
+```bash
+# 开启手动狙击模式
+python main.py
 
-```powershell
-npm run build
-npx electron . --target "C:\path\to\old-file.txt"
+# 指定删除某个特定文件 (替换成你的文件路径)
+python main.py "C:\path\to\your\file.txt"
 ```
 
-明确启动表演模式：
+### 3. 一键打包发布 (PyInstaller)
 
-```powershell
-npx electron . --spectacle
+使用以下命令可将 Python 源码与所有的图片 (`assets/`)、音频等依赖一键打包成单文件的 `.exe` 程序：
+
+```bash
+pyinstaller --noconfirm --onefile --windowed --name MonsterDeleter --add-data "assets;assets" --hidden-import send2trash main.py
 ```
+> **提示**: 生成的独立程序会在 `dist/MonsterDeleter.exe`。程序会在运行时自动将 `assets` 目录解压到临时路径 (`sys._MEIPASS`) 并完美加载。
 
-程序启动时会在当前用户注册以下资源管理器菜单，无需管理员权限：
-
-- `HKCU\Software\Classes\*\shell\SummonMonster`
-- `HKCU\Software\Classes\Directory\shell\SummonMonster`
-- `HKCU\Software\Classes\Directory\Background\shell\SummonMonster`
-
-Windows 11 上，这类经典菜单可能位于“显示更多选项”中。
-
-## 测试与构建
-
-```powershell
-npm test
-npm run typecheck
-npm run build
-npm run package:win
+## 📂 项目结构
 ```
-
-Windows 便携版输出到 `release/`。
-
-## 动画素材格式
-
-怪兽角色使用透明 PNG 精灵表，不是 MP4 视频。默认从左到右、从上到下播放，速度为 8 FPS。
-
-| 动作 | 文件 | 网格 | 总帧 / 播放帧 | 最新尺寸 |
-| --- | --- | --- | --- | --- |
-| 走路 | `assets/走路动效_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1190 × 1322 px |
-| 指向 | `assets/指着文件_spritesheet_transparent.png` | 5 × 3 | 表内 15 帧；播放索引 `[11, 12, 13, 14]` | 1122 × 1402 px |
-| 踢击 | `assets/踹文件动效_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1122 × 1402 px |
-| 登场 | `assets/雷欧登场_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 1122 × 1402 px |
-| 飞离 | `assets/出场飞行动效_spritesheet_transparent.png` | 4 × 4 | 16 帧 | 1254 × 1254 px |
-| 爆炸 | `assets/爆炸_spritesheet_transparent.png` | 5 × 3 | 15 帧 | 7200 × 5760 px |
-
-`assets/音频/爆炸.MP4` 只作为音效媒体，不包含界面使用的视频画面。
-
-## 项目结构
-
-```text
 MonsterDeleter/
-├─ assets/                 图片和音频素材
-├─ src/
-│  ├─ main/                Electron 主进程、注册表、回收站删除
-│  ├─ preload/             安全 IPC 桥
-│  ├─ renderer/            Canvas 动画和互动界面
-│  └─ shared/              主进程与 Renderer 共用类型
-├─ tests/                  Vitest 单元与回归测试
-├─ electron.vite.config.ts
-├─ package.json
-└─ tsconfig.json
+│
+├── main.py                  # 核心主程序逻辑 (UI渲染、动画播放、注册表写入)
+├── register_menu.py         # (遗留/参考) 原版菜单注册脚本
+├── requirements.txt         # 运行所需依赖
+├── assets/                  # 资源目录 (打包时嵌入 exe)
+│   ├── 音频/                # bgm, 音效等
+│   └── *_transparent.png    # 优化后的高压缩比透明背景序列帧
+├── scripts/                 # 工具脚本目录 (绿幕抠图、切片等)
+└── tests/                   # 开发过程中的测试用例
 ```
 
-## 安全说明
-
-- 桌面背景入口永远使用表演模式，不携带 `%1` 或目录路径。
-- 文件和文件夹只会进入 Windows 回收站。
-- 删除失败时不会改用永久删除。
-- 精灵动画最终点击位置仅控制视觉演出；实际回收站目标始终是资源管理器启动时传入并由主进程保存的路径。
+## 📜 许可
+本项目仅供娱乐与学习使用。
