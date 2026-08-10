@@ -5,25 +5,30 @@ interface MonsterAnimation {
   sheet: SpriteSheetOptions
 }
 
+const frameRange = (start: number, count: number): number[] =>
+  Array.from({ length: count }, (_, index) => start + index)
+
+export const MONSTER_KICK_IMPACT_FRAME = 14
+
 export const MONSTER_ANIMATIONS = {
   walk: {
-    source: '走路动效_spritesheet_transparent.png',
-    sheet: { columns: 5, rows: 3 }
+    source: 'walking_pointing.png',
+    sheet: { columns: 6, rows: 7, frameIndices: frameRange(0, 36) }
   },
   point: {
-    source: '指着文件_spritesheet_transparent.png',
-    sheet: { columns: 5, rows: 3, frameIndices: [11, 12, 13, 14] }
+    source: 'walking_pointing.png',
+    sheet: { columns: 6, rows: 7, frameIndices: frameRange(36, 6) }
   },
   kick: {
-    source: '踹文件动效_spritesheet_transparent.png',
-    sheet: { columns: 5, rows: 3 }
+    source: 'kicking_leaving.png',
+    sheet: { columns: 8, rows: 9, frameIndices: frameRange(0, 18) }
   },
   leo: {
-    source: '雷欧登场_spritesheet_transparent.png',
-    sheet: { columns: 5, rows: 3 }
+    source: 'kicking_leaving.png',
+    sheet: { columns: 8, rows: 9, frameIndices: frameRange(18, 30) }
   },
   fly: {
-    source: '出场飞行动效_spritesheet_transparent.png',
-    sheet: { columns: 4, rows: 4 }
+    source: 'kicking_leaving.png',
+    sheet: { columns: 8, rows: 9, frameIndices: frameRange(48, 24) }
   }
 } as const satisfies Record<string, MonsterAnimation>
